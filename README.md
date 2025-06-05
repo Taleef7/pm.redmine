@@ -20,7 +20,11 @@ This repository contains:
 
 2. **Start the development environment**:
    ```bash
+   # Option 1: Build from source (recommended)
    docker-compose up
+   
+   # Option 2: Use prebuilt Redmine image (if SSL issues occur)
+   docker-compose -f docker-compose.prebuilt.yml up
    ```
 
 3. **Access Redmine**:
@@ -37,8 +41,11 @@ This repository contains:
 ├── config/
 │   └── database.yml         # Database configuration
 ├── docker-compose.yml       # Docker Compose configuration
+├── docker-compose.prebuilt.yml # Alternative using prebuilt image
 ├── Dockerfile              # Redmine container definition
+├── Dockerfile.prebuilt     # Alternative Dockerfile
 ├── init-plugins.sh         # Plugin initialization script
+├── test-structure.sh       # Structure validation script
 └── .github/workflows/      # CI/CD workflows
 ```
 
@@ -87,6 +94,45 @@ docker-compose up
 ```
 
 ## Development Workflow
+
+## Development Workflow
+
+### Alternative Setup (if Docker build fails)
+
+If you encounter SSL issues during Docker build, you can set up Redmine manually:
+
+1. **Install dependencies locally**:
+   ```bash
+   # Install Ruby, MariaDB/MySQL locally
+   # Ubuntu/Debian:
+   sudo apt-get install ruby-dev mariadb-server libmariadb-dev
+   
+   # macOS:
+   brew install ruby mariadb
+   ```
+
+2. **Set up database**:
+   ```bash
+   # Start MariaDB
+   sudo systemctl start mariadb
+   # or on macOS: brew services start mariadb
+   
+   # Create database and user
+   mysql -u root -p
+   CREATE DATABASE redmine CHARACTER SET utf8mb4;
+   CREATE USER 'redmine'@'localhost' IDENTIFIED BY 'redmine';
+   GRANT ALL PRIVILEGES ON redmine.* TO 'redmine'@'localhost';
+   FLUSH PRIVILEGES;
+   ```
+
+3. **Configure and run Redmine**:
+   ```bash
+   cd redmine
+   bundle install --without development test
+   bundle exec rake generate_secret_token
+   RAILS_ENV=production bundle exec rake db:migrate
+   RAILS_ENV=production bundle exec rails server
+   ```
 
 ### Adding New Plugins
 
@@ -159,7 +205,21 @@ docker-compose exec redmine bundle exec rails runner "puts Redmine::Plugin.all.m
 
 ### Common Issues
 
-1. **Database connection issues**:
+1. **SSL Certificate Issues During Build**:
+   If you encounter SSL certificate errors during Docker build:
+   ```bash
+   # Option 1: Use HTTP for RubyGems (development only)
+   # Edit redmine/Gemfile and change the source line to:
+   # source 'http://rubygems.org'
+   
+   # Option 2: Build with network mode
+   docker build --network=host -t redmine-monorepo .
+   
+   # Option 3: Use Docker BuildKit with SSL fix
+   DOCKER_BUILDKIT=1 docker build -t redmine-monorepo .
+   ```
+
+2. **Database connection issues**:
    ```bash
    # Check database logs
    docker-compose logs db

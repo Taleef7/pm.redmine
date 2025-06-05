@@ -8,7 +8,9 @@ RUN apt-get update && apt-get install -y \
     imagemagick \
     libmagickwand-dev \
     git \
-    && rm -rf /var/lib/apt/lists/*
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && update-ca-certificates
 
 # Set working directory
 WORKDIR /usr/src/redmine
@@ -20,7 +22,8 @@ COPY redmine/ .
 COPY config/database.yml config/database.yml
 
 # Install gems
-RUN bundle install --without development test
+RUN bundle config set --local without 'development test' && \
+    bundle install
 
 # Create directories
 RUN mkdir -p tmp tmp/pdf public/plugin_assets

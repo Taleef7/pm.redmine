@@ -1,0 +1,18 @@
+# Alternative Dockerfile for environments with SSL issues
+FROM redmine:5.1
+
+# Copy custom database configuration
+COPY config/database.yml /usr/src/redmine/config/database.yml
+
+# Copy plugin initialization script
+COPY init-plugins.sh /usr/src/redmine/init-plugins.sh
+RUN chmod +x /usr/src/redmine/init-plugins.sh
+
+# Create plugin directory
+RUN mkdir -p /usr/src/redmine/plugins-source
+
+# Switch to redmine user
+USER redmine
+
+# Start with plugin initialization
+CMD ["/usr/src/redmine/init-plugins.sh && bundle exec rails server -b 0.0.0.0"]
