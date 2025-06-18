@@ -5,7 +5,7 @@ A comprehensive monorepo setup for Redmine development and testing with Docker s
 ## Overview
 
 This repository contains:
-- **Redmine core** as a submodule (locked to 5.1-stable)
+- **Redmine core** as a submodule (locked to 6.0-stable)
 - **Plugin submodules** in the `plugins/` directory
 - **Docker infrastructure** for easy development and testing
 - **Automated workflows** for continuous integration

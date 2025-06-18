@@ -1,5 +1,5 @@
 # Alternative Dockerfile for environments with SSL issues
-FROM redmine:5.1
+FROM redmine:6.0
 
 # Copy custom database configuration
 COPY config/database.yml /usr/src/redmine/config/database.yml

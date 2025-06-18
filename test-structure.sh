@@ -27,8 +27,8 @@ echo "✅ All submodules present"
 # Test 2: Check Redmine version
 echo "🏷️  Testing Redmine version..."
 cd redmine
-if grep -q "MAJOR = 5" lib/redmine/version.rb && grep -q "MINOR = 1" lib/redmine/version.rb; then
-    echo "✅ Redmine 5.1.x detected"
+if grep -q "MAJOR = 6" lib/redmine/version.rb && grep -q "MINOR = 0" lib/redmine/version.rb; then
+    echo "✅ Redmine 6.0.x detected"
 else
     echo "❌ Unexpected Redmine version"
     exit 1
@@ -95,7 +95,7 @@ echo ""
 echo "🎉 All tests passed! Monorepo structure is correct."
 echo ""
 echo "📊 Summary:"
-echo "   - Redmine 5.1.x (stable)"
+echo "   - Redmine 6.0.x (stable)"
 echo "   - 2 plugins included"
 echo "   - Docker infrastructure ready"
 echo "   - CI/CD workflow configured"

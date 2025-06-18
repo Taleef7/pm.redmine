@@ -1,7 +1,7 @@
 [submodule "redmine"]
 	path = redmine
 	url = https://github.com/redmine/redmine.git
-	branch = 5.1-stable
+	branch = 6.0-stable
 [submodule "plugins/additionals"]
 	path = plugins/additionals
 	url = https://github.com/AlphaNodes/additionals.git
