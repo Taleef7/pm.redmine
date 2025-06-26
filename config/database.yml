@@ -1,0 +1,26 @@
+production:
+  adapter: mysql2
+  database: <%= ENV['REDMINE_DB_DATABASE'] || 'redmine' %>
+  host: <%= ENV['REDMINE_DB_MYSQL'] || 'localhost' %>
+  port: <%= ENV['REDMINE_DB_PORT'] || 3306 %>
+  username: <%= ENV['REDMINE_DB_USERNAME'] || 'redmine' %>
+  password: <%= ENV['REDMINE_DB_PASSWORD'] || 'redmine' %>
+  encoding: utf8mb4
+
+development:
+  adapter: mysql2
+  database: <%= ENV['REDMINE_DB_DATABASE'] || 'redmine_development' %>
+  host: <%= ENV['REDMINE_DB_MYSQL'] || 'localhost' %>
+  port: <%= ENV['REDMINE_DB_PORT'] || 3306 %>
+  username: <%= ENV['REDMINE_DB_USERNAME'] || 'redmine' %>
+  password: <%= ENV['REDMINE_DB_PASSWORD'] || 'redmine' %>
+  encoding: utf8mb4
+
+test:
+  adapter: mysql2
+  database: <%= ENV['REDMINE_DB_DATABASE'] || 'redmine_test' %>
+  host: <%= ENV['REDMINE_DB_MYSQL'] || 'localhost' %>
+  port: <%= ENV['REDMINE_DB_PORT'] || 3306 %>
+  username: <%= ENV['REDMINE_DB_USERNAME'] || 'redmine' %>
+  password: <%= ENV['REDMINE_DB_PASSWORD'] || 'redmine' %>
+  encoding: utf8mb4

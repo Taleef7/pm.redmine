@@ -1,0 +1,10 @@
+[submodule "redmine"]
+	path = redmine
+	url = https://github.com/redmine/redmine.git
+	branch = 6.0-stable
+[submodule "plugins/additionals"]
+	path = plugins/additionals
+	url = https://github.com/AlphaNodes/additionals.git
+[submodule "plugins/clipboard_image_paste"]
+	path = plugins/clipboard_image_paste
+	url = https://github.com/peclik/clipboard_image_paste.git
