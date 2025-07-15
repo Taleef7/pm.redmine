@@ -1,0 +1,33 @@
+<h1>Query the RASS Engine</h1>
+
+<%= form_with(url: "/rass", method: "get", local: true) do |form| %>
+  <%= form.label :q, "Enter your question:" %>
+  <%= form.text_field :q, value: @query %>
+  <%= form.submit "Search" %>
+<% end %>
+
+<hr>
+
+<% if @error %>
+  <div class="flash error">
+    <p><strong>Error:</strong> <%= @error %></p>
+  </div>
+<% elsif @results %>
+  <h2>Results for: "<%= @query %>"</h2>
+  <h3>Answer:</h3>
+  <div style="background-color: #f7f7f7; border: 1px solid #ddd; padding: 10px; margin-bottom: 20px;">
+    <p><%= @results['answer'] %></p>
+  </div>
+
+  <h3>Source Documents:</h3>
+  <% if @results['source_documents'].any? %>
+    <% @results['source_documents'].each_with_index do |doc, i| %>
+      <h4>Source <%= i + 1 %></h4>
+      <pre style="white-space: pre-wrap; word-wrap: break-word;"><%= JSON.pretty_generate(doc) %></pre>
+    <% end %>
+  <% else %>
+    <p>No source documents were returned.</p>
+  <% end %>
+<% else %>
+  <p>Enter a query and click Search to begin.</p>
+<% end %>
