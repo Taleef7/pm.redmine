@@ -6,6 +6,10 @@ set -e
 
 echo "Initializing Redmine plugins..."
 
+echo "--- Listing contents of plugins-source ---"
+ls -la /usr/src/redmine/plugins-source/
+echo "----------------------------------------"
+
 # Remove any existing plugins directory content
 rm -rf /usr/src/redmine/plugins/*
 

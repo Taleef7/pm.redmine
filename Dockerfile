@@ -21,7 +21,13 @@ COPY redmine/ .
 # Copy database configuration
 COPY config/database.yml config/database.yml
 
-# Install gems
+# COPY PLUGINS FIRST!
+COPY plugins/ /usr/src/redmine/plugins/
+
+# Add required web server gem
+RUN echo 'gem "puma"' >> Gemfile
+
+# NOW, install all gems from Redmine core AND all plugins in one go
 RUN bundle config set --local without 'development test' && \
     bundle install
 
@@ -29,7 +35,7 @@ RUN bundle config set --local without 'development test' && \
 RUN mkdir -p tmp tmp/pdf public/plugin_assets
 
 # Set permissions
-RUN chown -R nobody:nogroup files log tmp public/plugin_assets
+RUN chown -R nobody:nogroup files log tmp public public/plugin_assets plugins config db
 
 # Expose port
 EXPOSE 3000
