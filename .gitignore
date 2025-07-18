@@ -10,6 +10,8 @@
 /test/version_tmp/
 /tmp/
 /redmine/config/initializers/secret_token.rb
+/docs
+/.cursor
 
 # Used by dotenv library to load environment variables.
 .env

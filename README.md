@@ -1,15 +1,36 @@
-# Redmine Monorepo
+# Redmine Semantic Search with OpenSearch
 
-A comprehensive monorepo setup for Redmine development and testing with Docker support.
+A comprehensive Redmine setup with semantic search capabilities using OpenSearch, ETL pipeline, and test data generation.
 
 ## Overview
 
 This repository contains:
 
 - **Redmine core** as a submodule (locked to 6.0-stable)
-- **Plugin submodules** in the `plugins/` directory
-- **Docker infrastructure** for easy development and testing
+- **Semantic search plugin** (RASS) that queries OpenSearch directly
+- **ETL pipeline** for indexing Redmine data into OpenSearch
+- **Docker infrastructure** with Redmine, MariaDB, and OpenSearch
+- **Test data generation** scripts for development and testing
 - **Automated workflows** for continuous integration
+
+## Features
+
+### 🔍 Semantic Search
+- Full-text search across all Redmine issues
+- Search in subject, description, project, status, priority, and more
+- Fuzzy matching and highlighting
+- Real-time search results with scoring
+
+### 📊 ETL Pipeline
+- Automated data extraction from Redmine REST API
+- Transformation and cleaning of issue data
+- Bulk indexing into OpenSearch
+- Configurable batch processing
+
+### 🧪 Test Data Generation
+- Rails console scripts for creating test projects and issues
+- Diverse issue types (software, marketing, HR)
+- Configurable data volume for testing
 
 ## Quick Start
 
@@ -22,175 +43,200 @@ This repository contains:
 
 2. **Configure Environment Secrets**:
 
-   - Create a `.env` file in the root directory with your environment variables:
-
    ```bash
-   cp .env.example .env
+   # Create .env file with required variables
+   cat > .env << EOF
+   MYSQL_ROOT_PASSWORD=redmine_root
+   MYSQL_DATABASE=redmine
+   MYSQL_USER=redmine
+   MYSQL_PASSWORD=redmine
+   REDMINE_SECRET_KEY_BASE=$(openssl rand -hex 64)
+   REDMINE_API_KEY=your_api_key_here
+   OPENSEARCH_USER=admin
+   OPENSEARCH_PASS=adminpassword123
+   OPENSEARCH_INITIAL_ADMIN_PASSWORD=adminpassword123
+   EOF
    ```
 
-   - Generate and add the Secret Key since this version of Redmine looks for a secret_token.rb file:
+3. **Generate Secret Key**:
 
    ```bash
    echo "RedmineApp::Application.config.secret_key_base = '$(docker-compose run --rm redmine bundle exec ruby -rsecurerandom -e "print SecureRandom.hex(64)")'" > redmine/config/initializers/secret_token.rb
    ```
 
-   Note: This command must be run before the first build, but you only ever need to run it once.
-
-3. **Build the Docker Image**:
+4. **Build and Start Services**:
 
    ```bash
    docker-compose build
+   docker-compose up -d
    ```
 
-4. **Run One-Time Database Setup**:
+5. **Run Database Setup**:
 
    ```bash
-   # First, run the core Redmine migrations
+   # Core Redmine migrations
    docker-compose run --rm redmine bundle exec rake db:migrate RAILS_ENV=production
 
-   # Second, run the migrations for any plugins
+   # Plugin migrations
    docker-compose run --rm redmine bundle exec rake redmine:plugins:migrate RAILS_ENV=production
    ```
 
-5. **Start the Application**:
+6. **Generate API Key** (if not set in .env):
 
    ```bash
-   docker-compose up
+   docker-compose exec redmine bundle exec rails console
+   # In console:
+   user = User.find_by(login: 'admin')
+   token = Token.create!(user: user, action: 'api')
+   puts "API Key: #{token.value}"
+   exit
    ```
 
-6. **Access Redmine**:
+7. **Generate Test Data**:
 
-   - Open your browser and go to [http://localhost:3000](http://localhost:3000).
+   ```bash
+   # Copy test data script to container
+   docker cp generate-test-data-rails.rb redmine:/tmp/
+   
+   # Run the script
+   docker-compose exec redmine bundle exec rails runner /tmp/generate-test-data-rails.rb
+   ```
+
+8. **Run ETL Pipeline**:
+
+   ```bash
+   # Run ETL to index data into OpenSearch
+   docker-compose --profile etl run --rm etl python /app/etl_script.py
+   ```
+
+9. **Access Redmine**:
+
+   - Open [http://localhost:3000](http://localhost:3000)
    - Default credentials: `admin` / `admin`
-
-## Daily Development Workflow
-
-After you have completed the one-time setup, your daily workflow is simple:
-
-- To start the server: `docker-compose up`
-
-- To stop the server: Press `Ctrl+C` in the terminal where it's running.
+   - Navigate to "RASS" in the top menu for semantic search
 
 ## Repository Structure
 
 ```
-
-├── redmine/ # Redmine core (submodule)
-├── plugins/ # Plugin submodules
-│ ├── additionals/ # AlphaNodes additionals plugin
-│ └── clipboard_image_paste/ # Clipboard image paste plugin
+├── redmine/                    # Redmine core (submodule)
+├── plugins/                    # Plugin submodules
+│   ├── redmine_rass_plugin/   # Semantic search plugin
+│   ├── additionals/           # AlphaNodes additionals plugin
+│   └── clipboard_image_paste/ # Clipboard image paste plugin
+├── etl/                       # ETL pipeline
+│   └── etl_script.py         # Main ETL script
 ├── config/
-│ └── database.yml # Database configuration
-├── docker-compose.yml # Docker Compose configuration
-├── docker-compose.prebuilt.yml # Alternative using prebuilt image
-├── Dockerfile # Redmine container definition
-├── Dockerfile.prebuilt # Alternative Dockerfile
-├── init-plugins.sh # Plugin initialization script
-├── test-structure.sh # Structure validation script
-└── .github/workflows/ # CI/CD workflows
-
+│   └── database.yml          # Database configuration
+├── docker-compose.yml         # Docker Compose configuration
+├── Dockerfile                 # Redmine container definition
+├── Dockerfile.etl            # ETL container definition
+├── init-plugins.sh           # Plugin initialization script
+├── generate-test-data-rails.rb # Test data generation
+├── run-etl.sh                # ETL execution script
+├── test-setup.sh             # Test environment setup
+└── .github/workflows/        # CI/CD workflows
 ```
 
-## Included Plugins
+## Services
 
-### 1. Additionals
+### Redmine
+- **Port**: 3000
+- **URL**: http://localhost:3000
+- **Features**: Core issue tracking with semantic search plugin
 
-- **Repository**: [AlphaNodes/additionals](https://github.com/AlphaNodes/additionals)
-- **Description**: Provides additional features and enhancements for Redmine
+### MariaDB Database
+- **Port**: 3306
+- **Database**: redmine
+- **Username**: redmine
+- **Password**: redmine (configurable)
 
-### 2. Clipboard Image Paste
+### OpenSearch
+- **Port**: 9200
+- **Version**: 2.14.0
+- **Purpose**: Semantic search index
+- **Security**: Disabled for development
 
-- **Repository**: [peclik/clipboard_image_paste](https://github.com/peclik/clipboard_image_paste)
-- **Description**: Allows pasting images directly from clipboard into Redmine
+### ETL Service
+- **Profile**: etl (runs on demand)
+- **Purpose**: Index Redmine data into OpenSearch
+- **Dependencies**: Redmine API, OpenSearch
 
-## Configuration
+## Semantic Search Plugin
 
-### Environment Variables
+The RASS plugin provides semantic search capabilities:
 
-The following environment variables can be used to customize the setup:
+### Features
+- Full-text search across all issue fields
+- Fuzzy matching for typos and variations
+- Result highlighting
+- Configurable search weights
+- Real-time results
 
-#### Database Configuration
+### Usage
+1. Navigate to "RASS" in the top menu
+2. Enter your search query
+3. View results with highlighting and scoring
+4. Click on issue numbers to view full details
 
-- `MYSQL_ROOT_PASSWORD` (default: `redmine_root`)
-- `MYSQL_DATABASE` (default: `redmine`)
-- `MYSQL_USER` (default: `redmine`)
-- `MYSQL_PASSWORD` (default: `redmine`)
+### Search Fields
+- Subject (highest weight)
+- Description (medium weight)
+- Project name (medium weight)
+- Status, priority, author, assignee
+- Custom fields and attachments
 
-#### Redmine Configuration
+## ETL Pipeline
 
-- `RAILS_ENV` (default: `production`)
-- `REDMINE_DB_MYSQL` (default: `db`)
-- `REDMINE_DB_PORT` (default: `3306`)
-- `REDMINE_DB_DATABASE` (default: `redmine`)
-- `REDMINE_DB_USERNAME` (default: `redmine`)
-- `REDMINE_DB_PASSWORD` (default: `redmine`)
+The ETL pipeline extracts data from Redmine and indexes it into OpenSearch:
 
-### Example with Custom Environment
+### Configuration
+- **Batch Size**: 100 issues per batch
+- **API Endpoint**: Redmine REST API
+- **Index Name**: `issues`
+- **Authentication**: API key
 
+### Running ETL
 ```bash
-# Create .env file
-cat > .env << EOF
-MYSQL_ROOT_PASSWORD=my_secure_root_password
-MYSQL_PASSWORD=my_secure_password
-RAILS_ENV=development
-EOF
+# Run ETL pipeline
+docker-compose --profile etl run --rm etl python /app/etl_script.py
 
-# Start with custom environment
-docker-compose up
+# Or use the convenience script
+./run-etl.sh
 ```
 
-## Development Workflow
+### Data Transformation
+The ETL script transforms Redmine issues into OpenSearch documents:
+- Maps all issue fields
+- Handles nested objects (project, status, etc.)
+- Preserves custom fields and attachments
+- Maintains data relationships
+
+## Test Data Generation
+
+Generate test data for development and testing:
+
+### Rails Console Script
+```bash
+# Generate 30 diverse issues
+docker-compose exec redmine bundle exec rails runner generate-test-data-rails.rb
+```
+
+### Test Data Types
+- Software development issues
+- Marketing and content tasks
+- HR and administrative tasks
+- Various priorities and statuses
+- Different projects and assignees
 
 ## Development Workflow
-
-### Alternative Setup (if Docker build fails)
-
-If you encounter SSL issues during Docker build, you can set up Redmine manually:
-
-1. **Install dependencies locally**:
-
-   ```bash
-   # Install Ruby, MariaDB/MySQL locally
-   # Ubuntu/Debian:
-   sudo apt-get install ruby-dev mariadb-server libmariadb-dev
-
-   # macOS:
-   brew install ruby mariadb
-   ```
-
-2. **Set up database**:
-
-   ```bash
-   # Start MariaDB
-   sudo systemctl start mariadb
-   # or on macOS: brew services start mariadb
-
-   # Create database and user
-   mysql -u root -p
-   CREATE DATABASE redmine CHARACTER SET utf8mb4;
-   CREATE USER 'redmine'@'localhost' IDENTIFIED BY 'redmine';
-   GRANT ALL PRIVILEGES ON redmine.* TO 'redmine'@'localhost';
-   FLUSH PRIVILEGES;
-   ```
-
-3. **Configure and run Redmine**:
-   ```bash
-   cd redmine
-   bundle install --without development test
-   bundle exec rake generate_secret_token
-   RAILS_ENV=production bundle exec rake db:migrate
-   RAILS_ENV=production bundle exec rails server
-   ```
 
 ### Adding New Plugins
-
-1. **Add plugin as submodule**:
-
+1. Add plugin as submodule:
    ```bash
    git submodule add https://github.com/user/plugin_name.git plugins/plugin_name
    ```
 
-2. **Rebuild and restart**:
+2. Rebuild and restart:
    ```bash
    docker-compose down
    docker-compose build
@@ -198,93 +244,109 @@ If you encounter SSL issues during Docker build, you can set up Redmine manually
    ```
 
 ### Updating Redmine or Plugins
-
-1. **Update submodules**:
-
+1. Update submodules:
    ```bash
    git submodule update --remote
    ```
 
-2. **Rebuild containers**:
+2. Rebuild containers:
    ```bash
    docker-compose build --no-cache
    docker-compose up
    ```
 
 ### Plugin Development
-
 - Plugins are mounted as read-only from the host
-- The `init-plugins.sh` script creates symlinks in the Redmine plugins directory
-- Any changes to plugin files will be reflected after container restart
+- The `init-plugins.sh` script creates symlinks
+- Changes reflect after container restart
 
-## Services
+## Configuration
 
-### Redmine
+### Environment Variables
 
-- **Port**: 3000
-- **URL**: http://localhost:3000
-- **Environment**: Production (configurable)
+#### Database Configuration
+- `MYSQL_ROOT_PASSWORD` (default: `redmine_root`)
+- `MYSQL_DATABASE` (default: `redmine`)
+- `MYSQL_USER` (default: `redmine`)
+- `MYSQL_PASSWORD` (default: `redmine`)
 
-### MariaDB Database
+#### Redmine Configuration
+- `RAILS_ENV` (default: `production`)
+- `REDMINE_SECRET_KEY_BASE` (required)
+- `REDMINE_API_KEY` (required for ETL)
 
-- **Port**: 3306
-- **Database**: redmine
-- **Username**: redmine
-- **Password**: redmine (configurable)
+#### OpenSearch Configuration
+- `OPENSEARCH_HOST` (default: `http://opensearch:9200`)
+- `OPENSEARCH_USER` (default: `admin`)
+- `OPENSEARCH_PASS` (default: `adminpassword123`)
+- `OPENSEARCH_INITIAL_ADMIN_PASSWORD` (required for OpenSearch 2.12+; default: `adminpassword123`)
+
+### Example .env File
+```bash
+MYSQL_ROOT_PASSWORD=my_secure_root_password
+MYSQL_PASSWORD=my_secure_password
+REDMINE_SECRET_KEY_BASE=your_secret_key_here
+REDMINE_API_KEY=your_api_key_here
+RAILS_ENV=production
+```
 
 ## Testing
 
-The repository includes a GitHub Actions workflow that:
-
-1. Builds the Docker image
-2. Starts the services
-3. Tests Redmine accessibility
-4. Provides detailed logs on failure
-
 ### Manual Testing
-
 ```bash
-# Build and test locally
-docker-compose up --build
+# Test Redmine accessibility
+curl http://localhost:3000
 
-# Test database connection
-docker-compose exec redmine bundle exec rails runner "puts ActiveRecord::Base.connection.adapter_name"
+# Test OpenSearch
+curl http://localhost:9200
 
-# Test plugin loading
-docker-compose exec redmine bundle exec rails runner "puts Redmine::Plugin.all.map(&:id)"
+# Test semantic search
+curl "http://localhost:3000/rass?q=bug"
+
+# Check indexed data
+curl "http://localhost:9200/issues/_search?q=*"
 ```
+
+### Automated Testing
+The repository includes GitHub Actions workflows that:
+1. Build Docker images
+2. Start services
+3. Test Redmine accessibility
+4. Verify plugin functionality
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **SSL Certificate Issues During Build**:
-   If you encounter SSL certificate errors during Docker build:
-
+1. **API Key Not Found**:
    ```bash
-   # Option 1: Use HTTP for RubyGems (development only)
-   # Edit redmine/Gemfile and change the source line to:
-   # source 'http://rubygems.org'
-
-   # Option 2: Build with network mode
-   docker build --network=host -t redmine-monorepo .
-
-   # Option 3: Use Docker BuildKit with SSL fix
-   DOCKER_BUILDKIT=1 docker build -t redmine-monorepo .
+   # Generate new API key
+   docker-compose exec redmine bundle exec rails console
+   user = User.find_by(login: 'admin')
+   Token.where(user: user, action: 'api').destroy_all
+   token = Token.create!(user: user, action: 'api')
+   puts "New API Key: #{token.value}"
    ```
 
-2. **Database connection issues**:
-
+2. **OpenSearch Connection Issues**:
    ```bash
-   # Check database logs
-   docker-compose logs db
-
-   # Verify database is running
-   docker-compose exec db mysql -u redmine -p -e "SHOW DATABASES;"
+   # Check OpenSearch health
+   curl http://localhost:9200/_cluster/health
+   
+   # Check service logs
+   docker-compose logs opensearch
    ```
 
-3. **Plugin not loading**:
+3. **ETL Pipeline Errors**:
+   ```bash
+   # Check ETL logs
+   docker-compose --profile etl run --rm etl python /app/etl_script.py
 
+   # Verify API key in .env
+   cat .env | grep REDMINE_API_KEY
+   ```
+
+4. **Plugin Not Loading**:
    ```bash
    # Check plugin symlinks
    docker-compose exec redmine ls -la plugins/
@@ -293,23 +355,18 @@ docker-compose exec redmine bundle exec rails runner "puts Redmine::Plugin.all.m
    docker-compose exec redmine find plugins/ -name "init.rb"
    ```
 
-4. **Port conflicts**:
-   ```bash
-   # Use different ports
-   REDMINE_PORT=3001 MYSQL_PORT=3307 docker-compose up
-   ```
-
 ### Logs and Debugging
-
 ```bash
 # View all logs
 docker-compose logs
 
 # Follow specific service logs
 docker-compose logs -f redmine
+docker-compose logs -f opensearch
 
-# Access Redmine container
+# Access containers
 docker-compose exec redmine bash
+docker-compose exec opensearch bash
 ```
 
 ## Contributing
@@ -322,7 +379,8 @@ docker-compose exec redmine bash
 
 ## License
 
-This monorepo setup is provided as-is. Individual components (Redmine core and plugins) maintain their respective licenses.
+This monorepo setup is provided as-is. Individual components maintain their respective licenses:
 
 - **Redmine**: GNU General Public License v2.0
-- **Plugins**: See individual plugin repositories for license information
+- **Plugins**: See individual plugin repositories
+- **OpenSearch**: Apache License 2.0
