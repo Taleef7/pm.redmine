@@ -14,7 +14,7 @@ services:
     ports:
       - "3306:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
       timeout: 20s
       retries: 10
 
@@ -38,8 +38,50 @@ services:
       - redmine_files:/usr/src/redmine/files
       - ./plugins:/usr/src/redmine/plugins-source:ro
       - ./init-plugins.sh:/usr/src/redmine/init-plugins.sh:ro
-    command: ["sh", "-c", "/usr/src/redmine/init-plugins.sh && bundle exec rails server -b 0.0.0.0"]
+    command: [ "sh", "-c", "/usr/src/redmine/init-plugins.sh && bundle exec rails server -b 0.0.0.0" ]
+
+  opensearch:
+    image: opensearchproject/opensearch:2.14.0
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - plugins.security.disabled=true
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch-data:/usr/share/opensearch/data
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9200" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  etl:
+    build:
+      context: .
+      dockerfile: Dockerfile.etl
+    env_file:
+      - .env
+    environment:
+      - REDMINE_API_URL=http://redmine:3000
+      - OPENSEARCH_HOST=http://opensearch:9200
+      - OPENSEARCH_USER=admin
+      - OPENSEARCH_PASS=S3cure!Passw0rd2024
+    depends_on:
+      redmine:
+        condition: service_started
+      opensearch:
+        condition: service_healthy
+    profiles:
+      - etl
 
 volumes:
   db_data:
   redmine_files:
+  elasticsearch-data:

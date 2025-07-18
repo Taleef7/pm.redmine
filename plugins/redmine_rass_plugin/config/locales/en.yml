@@ -1,3 +1,28 @@
 # English strings go here for Rails i18n
 en:
-  # my_label: "My label"
+  label_semantic_search_options: "Semantic Search Options"
+  label_use_semantic_search: "Use semantic search (AI-powered)"
+  label_search_algorithm: "Search Algorithm"
+  label_semantic_search: "Semantic Search"
+  label_hybrid_search: "Hybrid Search"
+  label_lexical_search: "Lexical Search"
+  label_similarity_threshold: "Similarity Threshold"
+  label_high_similarity: "High (0.8)"
+  label_medium_similarity: "Medium (0.6)"
+  label_low_similarity: "Low (0.4)"
+  label_semantic_search_results: "Semantic Search Results"
+  label_algorithm: "Algorithm"
+  label_threshold: "Threshold"
+  
+  # Descriptions
+  description_semantic_search: "AI-powered search that understands context and meaning"
+  description_hybrid_search: "Combines semantic and traditional text search"
+  description_lexical_search: "Traditional keyword-based search"
+  
+  # Messages
+  notice_semantic_search_enabled: "Semantic search is now enabled"
+  notice_semantic_search_disabled: "Semantic search is now disabled"
+  
+  # Errors
+  error_semantic_search_unavailable: "Semantic search is currently unavailable"
+  error_embedding_service_unavailable: "Embedding service is unavailable"
