@@ -5,6 +5,13 @@ require 'json'
 class RassController < ApplicationController
   helper RassSearchHelper
   before_action :find_optional_project_by_id, :authorize_global
+
+  private
+
+  # Finds the project by ID if provided, or sets it to nil
+  def find_optional_project_by_id
+    @project = Project.find_by_id(params[:project_id]) if params[:project_id].present?
+  end
   accept_api_auth :index, :semantic_search
 
   def index
