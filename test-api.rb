@@ -5,7 +5,10 @@ require 'uri'
 require 'json'
 
 # Test Redmine API access
-api_key = 'd0c55216145ba43df0e3e7009b0cb4d630b26fb3'
+api_key = ENV['REDMINE_API_KEY']
+if api_key.nil? || api_key.empty?
+  raise "❌ Error: REDMINE_API_KEY environment variable is not set."
+end
 base_url = 'http://localhost:3000'
 
 puts "Testing Redmine API access..."
