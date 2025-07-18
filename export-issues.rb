@@ -12,7 +12,7 @@ puts "🚀 Starting Issue Export and Indexing..."
 # OpenSearch configuration
 opensearch_host = 'http://opensearch:9200'
 opensearch_user = 'admin'
-opensearch_pass = 'S3cure!Passw0rd2024'
+opensearch_pass = ENV['OPENSEARCH_PASS'] || (raise "Environment variable OPENSEARCH_PASS is not set")
 
 # Function to make OpenSearch requests
 def make_opensearch_request(url, method='GET', data=nil, user=nil, password=nil)
