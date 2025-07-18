@@ -12,8 +12,11 @@ puts "🚀 Starting Simple Issue Export and Indexing..."
 # OpenSearch configuration
 opensearch_host = 'http://opensearch:9200'
 opensearch_user = 'admin'
-opensearch_pass = 'S3cure!Passw0rd2024'
+opensearch_pass = ENV['OPENSEARCH_PASS']
 
+if opensearch_pass.nil? || opensearch_pass.empty?
+  raise "Environment variable OPENSEARCH_PASS is not set. Please set it before running the script."
+end
 # Function to make OpenSearch requests
 def make_opensearch_request(url, method='GET', data=nil, user=nil, password=nil)
   uri = URI(url)
