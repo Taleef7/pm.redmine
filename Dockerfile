@@ -28,8 +28,7 @@ COPY plugins/ /usr/src/redmine/plugins/
 RUN echo 'gem "puma"' >> Gemfile
 
 # NOW, install all gems from Redmine core AND all plugins in one go
-RUN bundle config set --local without 'development test' && \
-    bundle install
+RUN bundle install
 
 # Create directories
 RUN mkdir -p tmp tmp/pdf public/plugin_assets
