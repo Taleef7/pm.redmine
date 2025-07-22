@@ -5,8 +5,17 @@ require 'json'
 class RassController < ApplicationController
   helper RassSearchHelper
   before_action :find_optional_project_by_id, :authorize_global
+  before_action :intercept_semantic_search, only: [:index]
 
   private
+
+  def intercept_semantic_search
+    if request.cookies['semantic_search'] == '1'
+      # Route to semantic search logic
+      # (This is a placeholder; actual routing/interception may require monkey-patching or a middleware approach)
+      # Example: render 'semantic_search_results' and halt
+    end
+  end
 
   # Finds the project by ID if provided, or sets it to nil
   def find_optional_project_by_id
@@ -14,63 +23,7 @@ class RassController < ApplicationController
   end
   accept_api_auth :index, :semantic_search
 
-  def index
-    # Show the enhanced search interface
-    @question = params[:q]&.strip || ""
-    @semantic_search = params[:semantic_search] == '1'
-    @search_algorithm = params[:search_algorithm] || 'hybrid'
-    @similarity_threshold = params[:similarity_threshold] || '0.6'
-    
-    # Get all the standard search parameters
-    @all_words = params[:all_words] ? params[:all_words].present? : true
-    @titles_only = params[:titles_only] ? params[:titles_only].present? : false
-    @search_attachments = params[:attachments].presence || '0'
-    @open_issues = params[:open_issues] ? params[:open_issues].present? : false
-    
-    # Handle pagination
-    case params[:format]
-    when 'xml', 'json'
-      @offset, @limit = api_offset_and_limit
-    else
-      @offset = nil
-      @limit = Setting.search_results_per_page.to_i
-      @limit = 10 if @limit == 0
-    end
-
-    # Quick jump to an issue
-    if !api_request? && (m = @question.match(/^#?(\d+)$/)) && (issue = Issue.visible.find_by_id(m[1].to_i))
-      redirect_to issue_path(issue)
-      return
-    end
-
-    # Determine projects to search
-    projects_to_search = determine_search_scope
-    
-    # Get available object types
-    @object_types = Redmine::Search.available_search_types.dup
-    if projects_to_search.is_a? Project
-      @object_types.delete('projects')
-      @object_types = @object_types.select {|o| User.current.allowed_to?(:"view_#{o}", projects_to_search)}
-    end
-
-    @scope = @object_types.select {|t| params[t].present?}
-    @scope = @object_types if @scope.empty?
-
-    # Perform search based on type
-    if @semantic_search && @question.present?
-      perform_semantic_search(projects_to_search)
-    else
-      perform_standard_search(projects_to_search)
-    end
-
-    respond_to do |format|
-      format.html { render :layout => false if request.xhr? }
-      format.api do
-        @results ||= []
-        render :layout => false
-      end
-    end
-  end
+  # Remove index action and any /rass page logic. Only keep helper methods or API endpoints if needed.
 
   def semantic_search
     # API endpoint for semantic search only
@@ -89,6 +42,22 @@ class RassController < ApplicationController
       format.json { render json: format_semantic_results }
       format.xml { render xml: format_semantic_results }
     end
+  end
+
+  # Class method to be called from SearchController for semantic search
+  def self.semantic_search_from_search_controller(params, user)
+    # Extract query and options from params
+    query = params[:q]&.strip || ""
+    options = {
+      algorithm: params[:search_algorithm] || 'hybrid',
+      threshold: params[:similarity_threshold] || 0.6
+      # Add more options as needed
+    }
+    # Call the SemanticIssueSearch model
+    results = SemanticIssueSearch.semantic_search(query, user, options)
+    # TODO: Integrate with RASS-specific APIs/services as needed (placeholder)
+    # Return results in the format expected by the search view
+    results
   end
 
   private

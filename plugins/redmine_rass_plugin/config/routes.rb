@@ -1,9 +1,10 @@
-# Plugin's routes
-# See: http://guides.rubyonrails.org/routing.html
+# Only keep settings or API routes if needed. Remove /rass or index routes.
+# Example:
+# RedmineApp::Application.routes.draw do
+#   # No /rass route
+# end
 
-# Main search interface (integrated with Redmine search)
-get '/rass', :to => 'rass#index'
-
-# API endpoint for semantic search only
-get '/rass/semantic_search', :to => 'rass#semantic_search'
-post '/rass/semantic_search', :to => 'rass#semantic_search'
+# Settings management
+get '/rass/settings', :to => 'rass_settings#index'
+post '/rass/settings', :to => 'rass_settings#update'
+post '/rass/settings/test_embedding', :to => 'rass_settings#test_embedding'
