@@ -1,3 +1,0 @@
-= redmine_rass_plugin
-
-Description goes here

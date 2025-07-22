@@ -1,0 +1,182 @@
+<div class="contextual">
+  <%= link_to l(:label_back), :back, :class => 'icon icon-cancel' %>
+</div>
+
+<h2><%= l(:label_rass_settings) %></h2>
+
+<%= form_tag({:action => 'update'}, :method => :post) do %>
+  <div class="box">
+    <h3><%= l(:label_embedding_configuration) %></h3>
+    
+    <p>
+      <label for="settings_embedding_provider"><%= l(:label_embedding_provider) %></label>
+      <%= select_tag 'settings[embedding_provider]', 
+          options_for_select([
+            [l(:label_hash_based), 'hash'],
+            [l(:label_openai), 'openai'],
+            [l(:label_cohere), 'cohere']
+          ], @settings[:embedding_provider] || 'hash') %>
+      <em class="info"><%= l(:text_embedding_provider_help) %></em>
+    </p>
+    
+    <div id="openai-settings" class="provider-settings" style="display: none;">
+      <h4><%= l(:label_openai_configuration) %></h4>
+      <p>
+        <label for="settings_openai_api_key"><%= l(:label_openai_api_key) %></label>
+        <%= password_field_tag 'settings[openai_api_key]', @settings[:openai_api_key], :size => 60 %>
+        <em class="info"><%= l(:text_openai_api_key_help) %></em>
+      </p>
+      <p>
+        <label for="settings_openai_model"><%= l(:label_openai_model) %></label>
+        <%= text_field_tag 'settings[openai_model]', @settings[:openai_model] || 'text-embedding-ada-002', :size => 30 %>
+      </p>
+    </div>
+    
+    <div id="cohere-settings" class="provider-settings" style="display: none;">
+      <h4><%= l(:label_cohere_configuration) %></h4>
+      <p>
+        <label for="settings_cohere_api_key"><%= l(:label_cohere_api_key) %></label>
+        <%= password_field_tag 'settings[cohere_api_key]', @settings[:cohere_api_key], :size => 60 %>
+        <em class="info"><%= l(:text_cohere_api_key_help) %></em>
+      </p>
+      <p>
+        <label for="settings_cohere_model"><%= l(:label_cohere_model) %></label>
+        <%= text_field_tag 'settings[cohere_model]', @settings[:cohere_model] || 'embed-english-v3.0', :size => 30 %>
+      </p>
+    </div>
+    
+    <h3><%= l(:label_search_configuration) %></h3>
+    <p>
+      <label for="settings_default_search_algorithm"><%= l(:label_default_search_algorithm) %></label>
+      <%= select_tag 'settings[default_search_algorithm]', 
+          options_for_select([
+            [l(:label_semantic_search), 'semantic'],
+            [l(:label_hybrid_search), 'hybrid'],
+            [l(:label_lexical_search), 'lexical']
+          ], @settings[:default_search_algorithm] || 'hybrid') %>
+    </p>
+    <p>
+      <label for="settings_default_similarity_threshold"><%= l(:label_default_similarity_threshold) %></label>
+      <%= select_tag 'settings[default_similarity_threshold]', 
+          options_for_select([
+            [l(:label_high_similarity), '0.8'],
+            [l(:label_medium_similarity), '0.6'],
+            [l(:label_low_similarity), '0.4']
+          ], @settings[:default_similarity_threshold] || '0.6') %>
+    </p>
+    
+    <h3><%= l(:label_performance_configuration) %></h3>
+    <p>
+      <label><%= check_box_tag 'settings[enable_embedding_cache]', '1', @settings[:enable_embedding_cache] != false %> <%= l(:label_enable_embedding_cache) %></label>
+    </p>
+    <p>
+      <label for="settings_embedding_cache_ttl"><%= l(:label_embedding_cache_ttl) %></label>
+      <%= number_field_tag 'settings[embedding_cache_ttl]', @settings[:embedding_cache_ttl] || 3600, :min => 60, :max => 86400 %>
+      <em class="info"><%= l(:text_cache_ttl_help) %></em>
+    </p>
+    <p>
+      <label for="settings_embedding_cache_size"><%= l(:label_embedding_cache_size) %></label>
+      <%= number_field_tag 'settings[embedding_cache_size]', @settings[:embedding_cache_size] || 1000, :min => 100, :max => 10000 %>
+      <em class="info"><%= l(:text_cache_size_help) %></em>
+    </p>
+  </div>
+  
+  <p><%= submit_tag l(:button_save) %></p>
+<% end %>
+
+<div class="box">
+  <h3><%= l(:label_test_embedding_provider) %></h3>
+  <p><%= l(:text_test_embedding_help) %></p>
+  
+  <div id="test-embedding-form">
+    <p>
+      <label for="test_provider"><%= l(:label_provider) %></label>
+      <%= select_tag 'test_provider', 
+          options_for_select([
+            [l(:label_hash_based), 'hash'],
+            [l(:label_openai), 'openai'],
+            [l(:label_cohere), 'cohere']
+          ]), :id => 'test-provider-select' %>
+    </p>
+    <p>
+      <label for="test_api_key"><%= l(:label_api_key) %></label>
+      <%= password_field_tag 'test_api_key', '', :size => 60, :id => 'test-api-key' %>
+    </p>
+    <p>
+      <%= button_tag l(:button_test), :type => 'button', :id => 'test-embedding-btn' %>
+    </p>
+  </div>
+  
+  <div id="test-result" style="display: none;">
+    <p id="test-message"></p>
+  </div>
+</div>
+
+<%= javascript_tag do %>
+$(document).ready(function() {
+  // Show/hide provider settings based on selection
+  function toggleProviderSettings() {
+    var provider = $('#settings_embedding_provider').val();
+    $('.provider-settings').hide();
+    if (provider === 'openai') {
+      $('#openai-settings').show();
+    } else if (provider === 'cohere') {
+      $('#cohere-settings').show();
+    }
+  }
+  
+  $('#settings_embedding_provider').change(toggleProviderSettings);
+  toggleProviderSettings();
+  
+  // Test embedding provider
+  $('#test-embedding-btn').click(function() {
+    var provider = $('#test-provider-select').val();
+    var apiKey = $('#test-api-key').val();
+    
+    $.ajax({
+      url: '<%= url_for(:action => 'test_embedding') %>',
+      method: 'POST',
+      data: {
+        provider: provider,
+        api_key: apiKey
+      },
+      success: function(response) {
+        $('#test-result').show();
+        if (response.success) {
+          $('#test-message').html('<span class="icon icon-checked">' + response.message + '</span>');
+        } else {
+          $('#test-message').html('<span class="icon icon-error">' + response.message + '</span>');
+        }
+      },
+      error: function() {
+        $('#test-result').show();
+        $('#test-message').html('<span class="icon icon-error">Test failed</span>');
+      }
+    });
+  });
+});
+<% end %>
+
+<style>
+.provider-settings {
+  margin: 10px 0;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background-color: #f9f9f9;
+}
+
+#test-result {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 3px;
+}
+
+#test-result .icon-checked {
+  color: #4caf50;
+}
+
+#test-result .icon-error {
+  color: #f44336;
+}
+</style> 

@@ -1,0 +1,48 @@
+defaults: &defaults
+  # Embedding Provider Configuration
+  embedding_provider: hash  # Options: openai, gemini, cohere, hash
+  
+  # OpenAI Configuration
+  openai_api_key: ""
+  openai_model: "text-embedding-ada-002"
+  
+  # Cohere Configuration  
+  cohere_api_key: ""
+  cohere_model: "embed-english-v3.0"
+
+  # Gemini Configuration
+  gemini_api_key: ""
+  gemini_model: "models/gemini-embedding-001"
+  
+  # Search Configuration
+  default_search_algorithm: "hybrid"  # Options: semantic, hybrid, lexical
+  default_similarity_threshold: "0.6"
+  max_search_results: 50
+  
+  # Performance Configuration
+  enable_embedding_cache: true
+  embedding_cache_ttl: 3600  # 1 hour in seconds
+  batch_embedding_size: 100
+  
+  # OpenSearch Configuration
+  opensearch_host: "http://opensearch:9200"
+  opensearch_index: "issues"
+  
+  # Feature Flags
+  enable_semantic_search: true
+  enable_hybrid_search: true
+  enable_lexical_search: true
+
+test:
+  <<: *defaults
+  embedding_provider: "hash"
+  enable_embedding_cache: false
+
+development:
+  <<: *defaults
+  embedding_provider: "hash"
+
+production:
+  <<: *defaults
+  embedding_provider: "openai"
+  enable_embedding_cache: true 
