@@ -13,7 +13,8 @@ module RedmineRassPlugin
           semantic = (cookies['semantic_search'] == '1') || (params[:semantic] == '1')
           if semantic && params[:q].present?
             # Call semantic search logic (example, adapt as needed)
-            @results = ::SemanticIssueSearch.semantic_search(params[:q], User.current, params)
+            sanitized_options = { query: params[:q] }
+            @results = ::SemanticIssueSearch.semantic_search(params[:q], User.current, sanitized_options)
             @result_count = @results.size
             @result_count_by_type = {} # Optionally, group by type if needed
             @tokens = [] # Optionally, extract tokens if needed
