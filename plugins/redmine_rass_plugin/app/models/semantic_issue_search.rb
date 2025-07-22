@@ -54,21 +54,19 @@ class SemanticIssueSearch
     end
     
     def build_semantic_query(query, threshold)
+      # Generate embedding for the query
+      query_embedding = generate_embedding(query)
+      
       {
         query: {
           bool: {
             must: [
               {
-                multi_match: {
-                  query: query,
-                  fields: [
-                    "subject^3",
-                    "description^2", 
-                    "project_name^2",
-                    "search_text"
-                  ],
-                  type: "best_fields",
-                  fuzziness: "AUTO"
+                knn: {
+                  embedding_vector: {
+                    vector: query_embedding,
+                    k: 50
+                  }
                 }
               }
             ],
@@ -91,6 +89,9 @@ class SemanticIssueSearch
     end
     
     def build_hybrid_query(query, threshold)
+      # Generate embedding for the query
+      query_embedding = generate_embedding(query)
+      
       {
         query: {
           bool: {
@@ -112,6 +113,15 @@ class SemanticIssueSearch
                   ],
                   type: "best_fields",
                   fuzziness: "AUTO"
+                }
+              },
+              # Vector similarity with boost
+              {
+                knn: {
+                  embedding_vector: {
+                    vector: query_embedding,
+                    k: 50
+                  }
                 }
               },
               # Similarity score boost
@@ -173,6 +183,161 @@ class SemanticIssueSearch
       }
     end
     
+    def generate_embedding(text)
+      # Use production-grade embedding service with proper error handling and caching
+      return generate_hash_embedding(text) if text.blank?
+      
+      # Check cache first
+      cache = EmbeddingCache.instance
+      cached_embedding = cache.get(text)
+      return cached_embedding if cached_embedding
+      
+      # Try to use the configured embedding provider
+      provider = get_embedding_provider
+      
+      embedding = case provider
+      when 'openai'
+        generate_openai_embedding(text)
+      when 'cohere'
+        generate_cohere_embedding(text)
+      when 'gemini'
+        generate_gemini_embedding(text)
+      else
+        generate_hash_embedding(text)
+      end
+      
+      # Cache the result
+      cache.set(text, embedding)
+      embedding
+      
+    rescue => e
+      Rails.logger.error "Embedding generation failed: #{e.message}, falling back to hash-based embedding"
+      fallback_embedding = generate_hash_embedding(text)
+      cache.set(text, fallback_embedding) if text.present?
+      fallback_embedding
+    end
+    
+    def get_embedding_provider
+      # Check environment variable first
+      provider = ENV['EMBEDDING_PROVIDER']
+      return provider if provider.present?
+      
+      # Check Redmine settings
+      Setting.plugin_redmine_rass_plugin&.dig('embedding_provider') || 'hash'
+    end
+    
+    def generate_openai_embedding(text)
+      api_key = ENV['OPENAI_API_KEY'] || Setting.plugin_redmine_rass_plugin&.dig('openai_api_key')
+      return generate_hash_embedding(text) unless api_key.present?
+      
+      api_url = ENV['OPENAI_API_URL'] || Setting.plugin_redmine_rass_plugin&.dig('openai_api_url') || 'https://api.openai.com/v1/embeddings'
+      uri = URI.parse(api_url)
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true
+      
+      request = Net::HTTP::Post.new(uri.request_uri)
+      request['Authorization'] = "Bearer #{api_key}"
+      request['Content-Type'] = 'application/json'
+      request.body = {
+        input: text,
+        model: 'text-embedding-ada-002'
+      }.to_json
+      
+      response = http.request(request)
+      
+      if response.is_a?(Net::HTTPSuccess)
+        result = JSON.parse(response.body)
+        result['data'][0]['embedding']
+      else
+        raise "OpenAI API error: #{response.code} - #{response.body}"
+      end
+    rescue => e
+      Rails.logger.error "OpenAI embedding failed: #{e.message}"
+      raise e
+    end
+    
+    def generate_cohere_embedding(text)
+      api_key = ENV['COHERE_API_KEY'] || Setting.plugin_redmine_rass_plugin&.dig('cohere_api_key')
+      return generate_hash_embedding(text) unless api_key.present?
+      
+      uri = URI.parse('https://api.cohere.ai/v1/embed')
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true
+      
+      request = Net::HTTP::Post.new(uri.request_uri)
+      request['Authorization'] = "Bearer #{api_key}"
+      request['Content-Type'] = 'application/json'
+      request.body = {
+        texts: [text],
+        model: 'embed-english-v3.0'
+      }.to_json
+      
+      response = http.request(request)
+      
+      if response.is_a?(Net::HTTPSuccess)
+        result = JSON.parse(response.body)
+        result['embeddings'][0]
+      else
+        raise "Cohere API error: #{response.code} - #{response.body}"
+      end
+    rescue => e
+      Rails.logger.error "Cohere embedding failed: #{e.message}"
+      raise e
+    end
+    
+    def generate_gemini_embedding(text)
+      api_key = ENV['GEMINI_API_KEY'] || Setting.plugin_redmine_rass_plugin&.dig('gemini_api_key')
+      model = ENV['GEMINI_MODEL'] || Setting.plugin_redmine_rass_plugin&.dig('gemini_model') || 'models/gemini-embedding-001'
+      return generate_hash_embedding(text) unless api_key.present?
+
+      uri = URI.parse("https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent")
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true
+
+      request = Net::HTTP::Post.new(uri.request_uri)
+      request['x-goog-api-key'] = api_key
+      request['Content-Type'] = 'application/json'
+      request.body = {
+        model: 'models/gemini-embedding-001',
+        content: {
+          parts: [ { text: text } ]
+        }
+      }.to_json
+
+      response = http.request(request)
+
+      if response.is_a?(Net::HTTPSuccess)
+        result = JSON.parse(response.body)
+        result.dig('embedding', 'values')
+      else
+        raise "Gemini API error: #{response.code} - #{response.body}"
+      end
+    rescue => e
+      Rails.logger.error "Gemini embedding failed: #{e.message}"
+      raise e
+    end
+
+    def generate_hash_embedding(text)
+      # Fallback hash-based embedding for development or when APIs fail
+      require 'digest'
+      
+      if text.blank?
+        return Array.new(1536, 0.0)
+      end
+      
+      # Create a deterministic vector based on text hash
+      hash_obj = Digest::SHA256.digest(text)
+      hash_bytes = hash_obj.bytes
+      
+      vector = []
+      (0...1536).each do |i|
+        byte_index = i % hash_bytes.length
+        vector << (hash_bytes[byte_index] / 255.0) * 2 - 1
+      end
+      
+      vector
+    end
+    
     def make_opensearch_request(uri, search_body)
       http = Net::HTTP.new(uri.host, uri.port)
       request = Net::HTTP::Post.new(uri.request_uri, 'Content-Type' => 'application/json')
@@ -198,30 +363,29 @@ class SemanticIssueSearch
     end
     
     def convert_to_search_results(opensearch_results)
-      opensearch_results.map do |hit|
+      return [] if opensearch_results['hits']['hits'].empty?
+      
+      opensearch_results['hits']['hits'].map do |hit|
         source = hit['_source']
-        highlight = hit['highlight'] || {}
+        highlights = hit['highlight'] || {}
         
         SearchResult.new(
           'issue',
           source['id'],
-          source['subject'],
-          source['description'],
-          source['created_on'],
-          source['project_name'],
-          nil, # project_id not available in simplified structure
-          hit['_score'],
-          highlight
+          source['subject'] || '',
+          source['description'] || '',
+          source['created_on'] || Time.current,
+          source.dig('project', 'name') || '',
+          source.dig('project', 'id'),
+          hit['_score'] || 0.0,
+          highlights
         )
       end
     end
   end
 end
 
-# Custom search result class
 class SearchResult
-  attr_accessor :type, :id, :title, :description, :datetime, :project_name, :project_id, :score, :highlights
-  
   def initialize(type, id, title, description, datetime, project_name, project_id, score, highlights = {})
     @type = type
     @id = id
@@ -233,27 +397,27 @@ class SearchResult
     @score = score
     @highlights = highlights
   end
-  
+
   def event_type
     @type
   end
-  
+
   def event_title
     @title
   end
-  
+
   def event_description
     @description
   end
-  
+
   def event_datetime
     @datetime
   end
-  
+
   def project
     Project.find(@project_id) if @project_id
   end
-  
+
   def event_url
     case @type
     when 'issue'
@@ -261,5 +425,13 @@ class SearchResult
     else
       "#"
     end
+  end
+
+  def score
+    @score
+  end
+
+  def highlights
+    @highlights
   end
 end 

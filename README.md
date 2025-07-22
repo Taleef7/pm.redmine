@@ -185,6 +185,17 @@ The RASS plugin provides semantic search capabilities:
 - Status, priority, author, assignee
 - Custom fields and attachments
 
+## RASS Plugin: Redmine Augmented Semantic Search
+
+The `redmine_rass_plugin` is a Redmine plugin that enables seamless semantic search integration without modifying Redmine core files. It injects a toggle into the search UI using a view hook. When enabled, all searches are routed to the plugin's semantic search handler, which can be extended to use LLMs, OpenSearch, or other advanced retrieval systems.
+
+- **No core Redmine changes required**
+- **Toggle is stored in a cookie and auto-submits the search form**
+- **Easily extensible for custom semantic search logic**
+- **All plugin code is in `plugins/redmine_rass_plugin`**
+
+See the plugin's code for further extension points and integration details.
+
 ## ETL Pipeline
 
 The ETL pipeline extracts data from Redmine and indexes it into OpenSearch:
