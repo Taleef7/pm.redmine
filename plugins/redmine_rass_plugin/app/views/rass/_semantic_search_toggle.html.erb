@@ -6,10 +6,19 @@
 </div>
 <script>
   // On page load, set checkbox state from cookie
+  // Helper function to get a cookie value by name
+  function getCookie(name) {
+    var cookies = document.cookie.split('; ').reduce(function(acc, cookie) {
+      var [key, value] = cookie.split('=');
+      acc[key] = value;
+      return acc;
+    }, {});
+    return cookies[name] || '';
+  }
   document.addEventListener('DOMContentLoaded', function() {
     var toggle = document.getElementById('semantic-search-toggle');
     if (!toggle) return;
-    var semantic = document.cookie.replace(/(?:(?:^|.*;\s*)semantic_search\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+    var semantic = getCookie('semantic_search');
     toggle.checked = semantic === '1';
     toggle.addEventListener('change', function() {
       document.cookie = 'semantic_search=' + (toggle.checked ? '1' : '0') + '; path=/';
