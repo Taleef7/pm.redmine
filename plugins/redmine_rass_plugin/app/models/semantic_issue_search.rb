@@ -329,7 +329,7 @@ class SemanticIssueSearch
       hash_bytes = hash_obj.bytes
       
       vector = []
-      for i in 0...1536
+      (0...1536).each do |i|
         byte_index = i % hash_bytes.length
         vector << (hash_bytes[byte_index] / 255.0) * 2 - 1
       end
