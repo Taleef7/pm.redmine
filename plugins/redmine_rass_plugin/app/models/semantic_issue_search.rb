@@ -230,7 +230,8 @@ class SemanticIssueSearch
       api_key = ENV['OPENAI_API_KEY'] || Setting.plugin_redmine_rass_plugin&.dig('openai_api_key')
       return generate_hash_embedding(text) unless api_key.present?
       
-      uri = URI.parse('https://api.openai.com/v1/embeddings')
+      api_url = ENV['OPENAI_API_URL'] || Setting.plugin_redmine_rass_plugin&.dig('openai_api_url') || 'https://api.openai.com/v1/embeddings'
+      uri = URI.parse(api_url)
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = true
       
