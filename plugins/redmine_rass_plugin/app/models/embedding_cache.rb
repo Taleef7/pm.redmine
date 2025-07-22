@@ -4,8 +4,6 @@ class EmbeddingCache
   def initialize
     @cache = {}
     @access_times = {}
-    @max_size = Setting.plugin_redmine_rass_plugin&.dig('embedding_cache_size') || 1000
-    @ttl = Setting.plugin_redmine_rass_plugin&.dig('embedding_cache_ttl') || 3600
   end
   
   def get(text)
