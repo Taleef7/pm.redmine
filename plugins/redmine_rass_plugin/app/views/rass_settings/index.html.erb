@@ -52,7 +52,7 @@
     </p>
     <p>
       <label for="settings_rass_api_key">RASS API Key</label>
-      <%= password_field_tag 'settings[rass_api_key]', @settings[:rass_api_key], :size => 60, :placeholder => 'API Key' %>
+      <%= password_field_tag 'settings[rass_api_key]', nil, :size => 60, :placeholder => 'Leave blank to keep the current API Key' %>
     </p>
     <p>
       <label for="settings_rass_default_page_size">Default Page Size</label>
