@@ -394,7 +394,7 @@ class SemanticIssueSearch
       api_key = Setting.plugin_redmine_rass_plugin['rass_api_key']
       return [] if rass_url.blank?
 
-      uri = URI.join(rass_url, '/search/semantic')
+      uri = URI(rass_url) + '/search/semantic'
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = (uri.scheme == 'https')
 
