@@ -32,6 +32,8 @@ defaults: &defaults
   enable_semantic_search: true
   enable_hybrid_search: true
   enable_lexical_search: true
+  rass_engine_url: ""
+  rass_default_page_size: 10
 
 test:
   <<: *defaults
