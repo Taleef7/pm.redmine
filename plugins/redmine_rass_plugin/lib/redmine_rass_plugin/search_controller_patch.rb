@@ -9,19 +9,32 @@ module RedmineRassPlugin
         alias_method :orig_index, :index
 
         def index
-          # Check for semantic search toggle (cookie or param)
           semantic = (cookies['semantic_search'] == '1') || (params[:semantic] == '1')
           if semantic && params[:q].present?
-            # Call semantic search logic (example, adapt as needed)
-            sanitized_options = { query: params[:q] }
-            @results = ::SemanticIssueSearch.semantic_search(params[:q], User.current, sanitized_options)
+            @question = params[:q]&.strip || ""
+            @all_words = params[:all_words] ? params[:all_words].present? : true
+            @titles_only = params[:titles_only] ? params[:titles_only].present? : false
+            @search_attachments = params[:attachments].presence || '0'
+            @open_issues = params[:open_issues] ? params[:open_issues].present? : false
+            @scope = Redmine::Search.available_search_types.dup
+            @result_pages = nil
+            @offset = nil
+            @limit = Setting.search_results_per_page.to_i
+            @limit = 10 if @limit == 0
+            @results = SemanticIssueSearch.rass_semantic_search(@question, User.current, page: params[:page] || 1, per_page: @limit)
             @result_count = @results.size
-            @result_count_by_type = {} # Optionally, group by type if needed
-            @tokens = [] # Optionally, extract tokens if needed
-            render 'search/index'
-          else
-            orig_index
+            @result_count_by_type = { 'issues' => @result_count }
+            @tokens = @question.present? ? @question.split(/\s+/) : []
+            respond_to do |format|
+              format.html {render :layout => false if request.xhr?}
+              format.api do
+                @results ||= []
+                render :layout => false
+              end
+            end
+            return
           end
+          orig_index
         end
       end
     end

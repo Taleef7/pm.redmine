@@ -1,3 +1,7 @@
+require 'net/http'
+require 'uri'
+require 'json'
+
 class SemanticIssueSearch
   # Remove the problematic acts_as_searchable line since this is not an ActiveRecord model
   
@@ -381,6 +385,66 @@ class SemanticIssueSearch
           highlights
         )
       end
+    end
+
+    # Call RASS Engine for semantic search if enabled
+    def self.rass_semantic_search(query, user, options = {})
+      rass_url = Setting.plugin_redmine_rass_plugin['rass_engine_url']
+      page_size = (Setting.plugin_redmine_rass_plugin['rass_default_page_size'] || 10).to_i
+      api_key = Setting.plugin_redmine_rass_plugin['rass_api_key']
+      return [] if rass_url.blank?
+
+      uri = URI.join(rass_url, '/search/semantic')
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = (uri.scheme == 'https')
+
+      req = Net::HTTP::Post.new(uri.path)
+      req['Content-Type'] = 'application/json'
+      req['x-user-id'] = user.id.to_s
+      req['Authorization'] = "Bearer #{api_key}" if api_key.present?
+      filters = options[:filters] || {}
+      req.body = {
+        q: query,
+        k: options[:per_page] || page_size,
+        filters: filters
+      }.to_json
+
+      begin
+        resp = http.request(req)
+        if resp.code.to_i == 200
+          data = JSON.parse(resp.body)
+          if data['results']
+            return data['results'].map { |r| rass_result_to_search_result(r) }
+          elsif data['data'] && data['data']['results']
+            return data['data']['results'].map { |r| rass_result_to_search_result(r) }
+          end
+        else
+          # Log error and trigger fallback to classic search
+          Rails.logger.error "RASS Engine returned error: #{resp.code} #{resp.body}"
+        end
+        []
+      rescue => e
+        Rails.logger.error "RASS Engine search failed: #{e.message}"
+        # Return empty array to trigger fallback to classic search
+        []
+      end
+    end
+
+    # Map a RASS result to a Redmine SearchResult (stub for now)
+    def self.rass_result_to_search_result(rass_result)
+      # Robust mapping from RASS result to Redmine SearchResult
+      # Handles alternative field names and missing data gracefully
+      SearchResult.new(
+        'issue',
+        rass_result['id'] || rass_result['issue_id'] || 0,
+        rass_result['subject'] || rass_result['title'] || '',
+        rass_result['description'] || rass_result['summary'] || '',
+        rass_result['created_at'] || rass_result['created_on'] || Time.current,
+        rass_result['project'] || rass_result['project_name'] || '',
+        rass_result['project_id'] || nil,
+        rass_result['score'] || rass_result['similarity'] || 0.0,
+        rass_result['highlights'] || {}
+      )
     end
   end
 end

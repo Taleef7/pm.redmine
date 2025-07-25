@@ -45,6 +45,20 @@
       </p>
     </div>
     
+    <h3>RASS Engine Configuration</h3>
+    <p>
+      <label for="settings_rass_engine_url">RASS Engine Endpoint URL</label>
+      <%= text_field_tag 'settings[rass_engine_url]', @settings[:rass_engine_url], :size => 60, :placeholder => 'https://rass.example.com' %>
+    </p>
+    <p>
+      <label for="settings_rass_api_key">RASS API Key</label>
+      <%= password_field_tag 'settings[rass_api_key]', @settings[:rass_api_key], :size => 60, :placeholder => 'API Key' %>
+    </p>
+    <p>
+      <label for="settings_rass_default_page_size">Default Page Size</label>
+      <%= number_field_tag 'settings[rass_default_page_size]', @settings[:rass_default_page_size] || 10, :min => 1, :max => 100 %>
+    </p>
+    
     <h3><%= l(:label_search_configuration) %></h3>
     <p>
       <label for="settings_default_search_algorithm"><%= l(:label_default_search_algorithm) %></label>
