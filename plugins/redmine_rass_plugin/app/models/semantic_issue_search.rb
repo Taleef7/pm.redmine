@@ -423,8 +423,16 @@ class SemanticIssueSearch
           Rails.logger.error "RASS Engine returned error: #{resp.code} #{resp.body}"
         end
         []
-      rescue => e
-        Rails.logger.error "RASS Engine search failed: #{e.message}"
+      rescue Net::OpenTimeout, Net::ReadTimeout, SocketError => e
+        Rails.logger.error "RASS Engine network error: #{e.message}"
+        # Return empty array to trigger fallback to classic search
+        []
+      rescue JSON::ParserError => e
+        Rails.logger.error "RASS Engine JSON parsing error: #{e.message}"
+        # Return empty array to trigger fallback to classic search
+        []
+      rescue StandardError => e
+        Rails.logger.error "RASS Engine unexpected error: #{e.message}"
         # Return empty array to trigger fallback to classic search
         []
       end
