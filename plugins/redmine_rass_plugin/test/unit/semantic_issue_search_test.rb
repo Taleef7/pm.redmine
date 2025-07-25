@@ -26,14 +26,7 @@ class SemanticIssueSearchTest < ActiveSupport::TestCase
         }
       ]
     }.to_json
-    http = mock()
-    req = mock()
-    Net::HTTP.stubs(:new).returns(http)
-    http.stubs(:use_ssl=)
-    Net::HTTP::Post.stubs(:new).returns(req)
-    req.stubs(:[]=)
-    req.stubs(:body=)
-    http.stubs(:request).returns(mock(code: '200', body: response_body))
+    mock_http_request(mock(code: '200', body: response_body))
 
     results = SemanticIssueSearch.rass_semantic_search('Test', @user)
     assert_equal 1, results.size
